@@ -67,10 +67,10 @@ impl Processor {
     }
 
     fn run(&mut self) {
-        while !self.step() { }
+        while !self.step().unwrap() { }
     }
 
-    fn step(&mut self) -> bool {
+    fn step(&mut self) -> Result<bool, String> {
         let i_type = self.current_instruction().i_type;
 
         let _ = match i_type {
@@ -86,10 +86,10 @@ impl Processor {
             InstructionType::IsLessThan => self.binary_operation(&|(p1, p2)| if p1 < p2 { 1 } else { 0 }),
             InstructionType::IsEqual => self.binary_operation(&|(p1, p2)| if p1 == p2 { 1 } else { 0 }),
 
-            InstructionType::Halt => return true,
-        };
+            InstructionType::Halt => return Ok(true),
+        }?;
 
-        return false;
+        return Ok(false);
     }
 
     fn binary_operation(&mut self, op: &dyn Fn((i32, i32)) -> i32) -> Result<(), String> {
