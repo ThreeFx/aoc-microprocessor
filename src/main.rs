@@ -67,27 +67,24 @@ impl Processor {
     }
 
     fn run(&mut self) {
-        //println!("ip: {}, mem: {:?}", self.ip, &self.memory[self.ip..self.ip+3]);
-        while !self.step() {
-            //println!("ip: {}, mem: {:?}", self.ip, &self.memory[self.ip..self.ip+3]);
-        }
+        while !self.step() { }
     }
 
     fn step(&mut self) -> bool {
         let i_type = self.current_instruction().i_type;
 
         let _ = match i_type {
-            InstructionType::Add => self.add(),
-            InstructionType::Multiply => self.multiply(),
+            InstructionType::Add => self.binary_operation(&|(p1, p2)| p1 + p2),
+            InstructionType::Multiply => self.binary_operation(&|(p1, p2)| p1 * p2),
 
             InstructionType::Read => self.read(),
             InstructionType::Print => self.print(),
 
-            InstructionType::JumpNZ => self.jump_if_non_zero(),
-            InstructionType::JumpZ => self.jump_if_zero(),
+            InstructionType::JumpNZ => self.conditional_jump(&|p1| p1 != 0),
+            InstructionType::JumpZ => self.conditional_jump(&|p1| p1 == 0),
 
-            InstructionType::IsLessThan => self.is_less_than(),
-            InstructionType::IsEqual => self.is_equal(),
+            InstructionType::IsLessThan => self.binary_operation(&|(p1, p2)| if p1 < p2 { 1 } else { 0 }),
+            InstructionType::IsEqual => self.binary_operation(&|(p1, p2)| if p1 == p2 { 1 } else { 0 }),
 
             InstructionType::Halt => return true,
         };
@@ -95,7 +92,7 @@ impl Processor {
         return false;
     }
 
-    fn add(&mut self) -> Result<(), String> {
+    fn binary_operation(&mut self, op: &dyn Fn((i32, i32)) -> i32) -> Result<(), String> {
         let instruction = self.current_instruction();
 
         let p1 = self.get_parameter_with_mode(1, instruction.p1_mode);
@@ -106,23 +103,7 @@ impl Processor {
         }
         let p3 = self.get_parameter(3);
 
-        self.memory[p3 as usize] = p1 + p2;
-        self.ip += 4;
-        return Ok(());
-    }
-
-    fn multiply(&mut self) -> Result<(), String> {
-        let instruction = self.current_instruction();
-
-        let p1 = self.get_parameter_with_mode(1, instruction.p1_mode);
-        let p2 = self.get_parameter_with_mode(2, instruction.p2_mode);
-
-        if instruction.p3_mode == ParameterMode::Immediate {
-            return Err("got immediate parameter mode for store address".to_string())
-        }
-        let p3 = self.get_parameter(3);
-
-        self.memory[p3 as usize] = p1 * p2;
+        self.memory[p3 as usize] = op((p1, p2));
         self.ip += 4;
         return Ok(());
     }
@@ -154,64 +135,18 @@ impl Processor {
         return Ok(())
     }
 
-    fn jump_if_non_zero(&mut self) -> Result<(), String> {
+    fn conditional_jump(&mut self, condition: &dyn Fn(i32) -> bool) -> Result<(), String> {
         let instruction = self.current_instruction();
         let p1 = self.get_parameter_with_mode(1, instruction.p1_mode);
         let p2 = self.get_parameter_with_mode(2, instruction.p2_mode);
 
-        if p1 != 0 {
+        if condition(p1) {
             self.ip = p2 as usize;
         } else {
             self.ip += 3;
         }
 
         return Ok(())
-    }
-
-    fn jump_if_zero(&mut self) -> Result<(), String> {
-        let instruction = self.current_instruction();
-        let p1 = self.get_parameter_with_mode(1, instruction.p1_mode);
-        let p2 = self.get_parameter_with_mode(2, instruction.p2_mode);
-
-        if p1 == 0 {
-            self.ip = p2 as usize;
-        } else {
-            self.ip += 3;
-        }
-
-        return Ok(())
-    }
-
-    fn is_less_than(&mut self) -> Result<(), String> {
-        let instruction = self.current_instruction();
-
-        let p1 = self.get_parameter_with_mode(1, instruction.p1_mode);
-        let p2 = self.get_parameter_with_mode(2, instruction.p2_mode);
-
-        if instruction.p3_mode == ParameterMode::Immediate {
-            return Err("got immediate parameter mode for store address".to_string())
-        }
-        let p3 = self.get_parameter(3);
-
-        self.memory[p3 as usize] = if p1 < p2 { 1 } else { 0 };
-        self.ip += 4;
-        return Ok(());
-    }
-
-    fn is_equal(&mut self) -> Result<(), String> {
-        let instruction = self.current_instruction();
-
-        let p1 = self.get_parameter_with_mode(1, instruction.p1_mode);
-        let p2 = self.get_parameter_with_mode(2, instruction.p2_mode);
-
-        if instruction.p3_mode == ParameterMode::Immediate {
-            return Err("got immediate parameter mode for store address".to_string())
-        }
-        let p3 = self.get_parameter(3);
-
-        self.memory[p3 as usize] = if p1 == p2 { 1 } else { 0 };
-        self.ip += 4;
-        return Ok(());
     }
 
     fn current_instruction(&self) -> Instruction {
