@@ -1,5 +1,5 @@
 [package]
-name = "one"
+name = "aoc-microprocessor"
 version = "0.1.0"
 authors = ["Ben Fiedler <bfiedler@ethz.ch>"]
 edition = "2018"
